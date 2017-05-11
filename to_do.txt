@@ -1,0 +1,3 @@
+- traitement de la colonne ecology.
+- traitement de la colonne prodiuct_type.
+
