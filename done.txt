@@ -1,0 +1,10 @@
+Jeudi 11 mai :
+- importation des données et placement dans dossier data.
+- Implémentation de la fonction rmlse.
+- Fonction d'exportation de csv sous format kaggle.
+- Importation des données.
+- Concaténation des données.
+- Encodage binaire des colonnes "water_1line", "big_market_raion",
+--- "big_road1_1line", "culture_objects_top_25" etc...
+
+
