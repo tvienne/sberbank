@@ -5,6 +5,13 @@ Jeudi 11 mai :
 - Importation des données.
 - Concaténation des données.
 - Encodage binaire des colonnes "water_1line", "big_market_raion",
---- "big_road1_1line", "culture_objects_top_25" etc...
+  "big_road1_1line", "culture_objects_top_25" etc...
+
+Samedi 13 Mai :
+- Implémentation Fonction train_test split.
+- Correction de bugs fonctions rmsle et kaggle_export.
+- Complétion des nulls values de "full_sq", "life_sq" et "floor" avec la valeur moyenne de la série.
+- Première soumission : score = 0.42997 / classement = top 87%
+- update sur github.
 
 
