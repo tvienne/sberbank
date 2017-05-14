@@ -13,5 +13,18 @@ Samedi 13 Mai :
 - Complétion des nulls values de "full_sq", "life_sq" et "floor" avec la valeur moyenne de la série.
 - Première soumission : score = 0.42997 / classement = top 87%
 - update sur github.
+- création de la variable "ext_sq" qui correspond au nombre de m2 extérieurs.
+- exclusion de deux exceptions contenant des life_sq et ext_sq supérieurs à 4000 m2.
+- Création d'un nouveau modèle avec Kremlin_km and floor.
+- Troisième soumission : score = 0.34740 / classement = top 75%
+
+Dimanche 14 mai :
+- entrainement sur tout le modèle d'entrainement (refactoring).
+- refactoring des colonnes à binariser dans cleaning.
+- Quatrième soumission : score = 0.33999 / classement = top 71%
+- exploration : life_sq et full_sq cleaning.
+- gestion des exceptions life_sq et full_sq lorsque life_sq > full_sq.
+- refactoring complet du code en vue de partager avec tout le monde.
+
 
 
