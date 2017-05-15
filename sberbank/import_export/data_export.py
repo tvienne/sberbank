@@ -21,3 +21,19 @@ def export_kaggle(df, dir_path="../result/"):
     # export
     now = strftime("%Y-%m-%d_%H_%M_%S", gmtime())
     df[["price_doc"]].to_csv(dir_path+"%s.csv" % now, sep=",", index=True)
+
+def export_data(df, name,dir_path="../saved_data/"):
+    """
+    @author : JK
+    Exports dataframe to csv format
+  
+    :param df: (pandas dataframe)
+    :param dir_path: (str) directory where to store file.
+    :return: No return
+    """
+
+    # export
+    now = strftime("%Y-%m-%d_%H_%M_%S", gmtime())
+    path = dir_path+name+"%s.csv" % now
+    df.to_csv(path, sep=",", index=False)
+    print(name + " exported into " + path)
