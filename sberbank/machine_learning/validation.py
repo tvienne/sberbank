@@ -22,20 +22,20 @@ def rmsle(y, pred):
     return result
 
 
-"""
-Do a k-fold training to create a full predicted vector
-Procede à un entrainement k-fold pour recrer un vecteur complet de prédiction
-"""
-
-
 def cross_val_predict(x, y, clf,n_fold=5):
-
+    """
+    @author : JK
+    Do a k-fold training to create a full predicted vector
+    :param x: (pandas serie) train matrix
+    :param y: (pandas serie) label
+    :return: the validation predicted vector. len(y_pred) == len(x)
+    """
     kf = KFold(len(y), n_folds=n_fold, shuffle=True, random_state=42)
 
     x = np.array(x)
     y = np.array(y)
     # Construct a kfolds object
-    y_prob = np.zeros(len(y))
+    y_pred = np.zeros(len(y))
 
     temp = 1
     # Iterate through folds
@@ -47,5 +47,5 @@ def cross_val_predict(x, y, clf,n_fold=5):
         y_train = y[train_index]
         clf.fit(x_train, y_train)
 
-        y_prob[test_index] = clf.predict(x_test)
-    return y_prob
+        y_pred[test_index] = clf.predict(x_test)
+    return y_pred
