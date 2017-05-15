@@ -4,13 +4,15 @@ Thibaud Kaggle main entry point
 import sys
 import os
 import pandas as pd
+import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 from sberbank.import_export.data_import import load_full_dataset, index_by_id
 from sberbank.cleaning.categorical import yes_no_binarisation
 from sberbank.cleaning.sq import clean_sq
 from sberbank.import_export.data_export import export_kaggle
 from sberbank.machine_learning.split import tt_split
-from sberbank.machine_learning.validation import rmsle
+from sberbank.machine_learning.validation import rmsle,cross_val_predict
+
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
 parent_dir = os.path.dirname(current_dir)
@@ -66,12 +68,17 @@ test = full_df[full_df["is_test"] == 1]
 x_train, x_val, y_train, y_val = tt_split(train_val[features], train_val[label],  0.8)
 x_test = test[features]
 
-model = RandomForestRegressor(1000, max_depth=15)
+model = RandomForestRegressor(50, max_depth=15)
 model.fit(x_train, y_train)
 pred_train = pd.Series(model.predict(x_train))
-pred_val = pd.Series(model.predict(x_val))
+#pred_val = pd.Series(model.predict(x_val))
 print("Score Train : %s" % rmsle(y_train, pred_train))
-print("Score Val : %s" % rmsle(y_val, pred_val))
+
+model = RandomForestRegressor(50, max_depth=15)
+pred_val = pd.Series(cross_val_predict(train_val[features], train_val[label], model, n_fold=5))
+#pred_val = pd.Series(pred_val)
+print("Score Val : %s" % rmsle(train_val[label], pred_val))
+
 
 #######################################
 #   Export to Kaggle                ###
