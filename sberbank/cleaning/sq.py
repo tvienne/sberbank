@@ -2,86 +2,107 @@
 Deals with sq features cleaning
 """
 from sklearn.ensemble import RandomForestRegressor
-import pandas as pd
 import numpy as np
-from sberbank.machine_learning.validation import rmsle,cross_val_predict,result
+from sberbank.machine_learning.validation import cross_val_predict
+import matplotlib.pyplot as plt
+import pandas as pd
+
 
 def clean_sq(df):
     """
-    @author : thibaud
-    Deals with columns full_sq and life_sq.
-    WARN : make sure that your dataframe has been indexed with id column (see import_export.import_export.index_by_idea())
+    @author : TV
+    Deals with columns full_sq and life_sq exceptions
+    WARN : make sure that your dataframe has been indexed with id col (see import_export.import_export.index_by_idea())
     :param df: (pandas dataframe)
     :return: df with processed columns "life_sq" and "full_sq".
     """
     # Drop the two sq exceptions (id = [3530, 13549])
     df = df.drop(labels=[3530, 13549], axis=0)
 
-    # Deal with observations where life_sq > full_sq
-    df["full_sq"] = df.apply(lambda row: row["life_sq"] if row["full_sq"] < row["life_sq"] else row["full_sq"],
-                             axis=1)
+    # Deal with too small values in life_sq or full_sq :
+    df["life_sq"] = df["life_sq"].apply(lambda el: np.nan if el < 5.0 else el)
+    df["full_sq"] = df["full_sq"].apply(lambda el: np.nan if el < 8.0 else el)
 
-    # Clean missing values in sq using feature mean
-    #df["full_sq"] = df["full_sq"].fillna(df["full_sq"].mean())
-    #df["life_sq"] = df["life_sq"].fillna(df["life_sq"].mean()) JK 16/05/2017 cf pred_nan_values
+    # Trying to fill full_sq NANs based on life_sq. If not possible, infer from full_sq mean.
+    df["full_sq"] = df.apply(lambda row: row["life_sq"] if row["full_sq"] == np.nan else row["full_sq"], axis=1)
+    df["full_sq"] = df["full_sq"].fillna(df["full_sq"].mean())
 
+    # if life_sq > full_sq, lower life_sq to full_sq value.
+    df["life_sq"] = df.apply(lambda row: apply_life_full_exception(row["life_sq"], row["full_sq"]), axis=1)
+
+    # Predict missing life_sq using pred_nan_values function
+    features = ['full_sq', 'floor', 'kitch_sq', 'num_room', 'max_floor', 'green_zone_km',
+                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
+    label = "life_sq"
+    df = pred_nan_values(df, features, label, True)
     return df
 
 
-def pred_nan_values(df_, verbose=1):
+def apply_life_full_exception(life, full):
     """
-    @author : JK
-    Prédit les NaN d'une colonne en entraînant un model RandomForestRegressor sur les autres colonnes.
+    @author: TV
+    Deals with observations where life_sq > full_sq.
+    WARN : Make sure there are not any NaN in full_sq, otherwise function will raise an error.
+    :param life: (float) life_sq
+    :param full:  (float) full_sq
+    :return: possibly new life_sq
+    """
+    if life == np.nan:  # case life==nan
+        return np.nan
+    else:
+        if full == np.nan:
+            raise ValueError("ERR : full_sq equals np.nan. please make sure there are no NaN values in full_sq")
+        if life > full:
+            return full
+        else:
+            return life
+
+
+def pred_nan_values(df, features, label, verbose=True):
+    """
+    @author : JK, TV
+    Prédit les NaN d'une colonne en entraînant un model RandomForestRegressor sur les colonnes features.
     :param df: (pandas dataframe)
+    :param features: (list) containing features names
+    :param label: (str) label column name
+    :param verbose: (bool) whether or not display graphics.
     :return: df with the NaN values predicted.
     """
-    # columns used for training
-    col_full = ['full_sq', 'floor', 'kitch_sq', 'life_sq', 'num_room', 'max_floor', 'green_zone_km',
-                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
-    # columns used for as target ( nan prediction)
-    col_order = ['num_room', 'kitch_sq', 'max_floor', 'floor', 'life_sq']
+    print("--- NaN value prediction on column : %s ---" % label)
 
-    print('--- NaN value prediction ---')
+    # Train/test creation
+    x_train = df[df[label].notnull()][features]
+    x_test = df[df[label].isnull()][features]
+    y_train = df[df[label].notnull()][label]
 
-    for c in col_order:
-        df = df_[col_full]
+    # NaN values
+    x_train = x_train.fillna(df.median())
+    x_test = x_test.fillna(df.median())
 
-        # Train/test creation
-        col_tmp = list(set(col_full) - set([c]))
-        list_tmp = df[c].isnull()
-        df['tmp'] = list_tmp
-        x_train = df.loc[df['tmp'] == False][col_tmp]
-        x_test = df.loc[df['tmp'] == True][col_tmp]
-        y_train = df.loc[df['tmp'] == False][c]
-        y_test = df.loc[df['tmp'] == True][c]
+    # clf initialization
+    clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
 
-        # NaN values
-        x_train = x_train.fillna(df.median()).values
-        x_test = x_test.fillna(df.median()).values
-        y_train = y_train.values
+    # check tuning
+    y_pred_rfr = cross_val_predict(x_train, y_train, clf, n_fold=3)
+    # mean = np.mean(y_train)
+    # y_pred_random_mean = np.array([mean for i in range(len(y_pred_rfr))])
 
-        # clf initialization
-        clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
+    if verbose:
+        # result(y_train, y_pred_rfr, y_pred_random_mean)
+        plt.scatter(y_train, y_pred_rfr)
+        plt.plot(np.linspace(0, 800, 100), np.linspace(0, 800, 100), color="r")
+        plt.plot(np.linspace(0, 800, 100),  2.0 * np.linspace(0, 800, 100), color="g")
+        plt.plot(np.linspace(0, 800, 100), 0.5 * np.linspace(0, 800, 100), color="g")
+        plt.xlabel("%s" % label)
+        plt.ylabel("prediction")
+        plt.title("Prediction on %s evaluation : (green scale = x2.0)" % label)
+        plt.show()
 
-        # check tuning
-        y_pred_rfr = cross_val_predict(x_train, y_train, clf,n_fold=3)
-        mean = np.mean(y_train)
-        y_pred_random_mean = np.array([mean for i in range(len(y_pred_rfr))])
+    # final training and fill na
+    clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
+    clf.fit(x_train, y_train)
+    y_test = pd.Series(clf.predict(x_test), x_test.index)
+    df[label] = df[label].fillna(y_test)
+    print(df[label])
 
-        if verbose:
-            print('\n' + str(c))
-            result(y_train, y_pred_rfr, y_pred_random_mean)
-
-        # final training
-        clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
-        clf.fit(x_train, y_train)
-        y_test_ = clf.predict(x_test)
-
-        # Loop for replacing the NaN values by their predicted values
-        list_tmp2 = df_[c].isnull()
-        df_['tmp'] = list_tmp2
-
-        df_.ix[df_.tmp == True, c] = y_test_
-        df_.drop('tmp', axis=1, inplace=True)
-        df.drop('tmp', axis=1, inplace=True)
-    return df_
+    return df

@@ -7,7 +7,6 @@ import pandas as pd
 pd.options.mode.chained_assignment = None ## without boring message, I feel better
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
-import xgboost as xgb
 from sberbank.import_export.data_import import load_full_dataset, index_by_id
 from sberbank.cleaning.categorical import yes_no_binarisation,otherise_categorical_feature,get_dummies
 from sberbank.cleaning.sq import clean_sq,pred_nan_values
@@ -43,10 +42,11 @@ full_df = yes_no_binarisation(full_df,to_binarize)
 # Deal with sq :
 full_df = clean_sq(full_df)
 
+
 # Other variables
 #full_df["num_room"] = full_df["num_room"].fillna(full_df["num_room"].mean())
 #full_df["floor"] = full_df["floor"].fillna(full_df["floor"].mean())
-full_df = pred_nan_values(full_df) # JK 16/05/2017
+
 full_df["kremlin_km"] = full_df["kremlin_km"].fillna(full_df["kremlin_km"].mean())
 
 
@@ -84,6 +84,7 @@ print("\n----- Machine learning :")
 # features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]
 features = ['full_sq', 'floor', 'kitch_sq', 'life_sq', 'num_room', 'max_floor', 'green_zone_km',
                 'kindergarten_km', 'metro_min_avto', 'workplaces_km']
+full_df[features] = full_df[features].fillna(full_df[features].median())
 #features = full_df.columns
 
 print('is there NaN value : ',full_df[features].isnull().values.any())
