@@ -3,6 +3,8 @@ Deals with sq features cleaning
 """
 from sklearn.ensemble import RandomForestRegressor
 import pandas as pd
+import numpy as np
+from sberbank.machine_learning.validation import rmsle,cross_val_predict,result
 
 def clean_sq(df):
     """
@@ -20,70 +22,66 @@ def clean_sq(df):
                              axis=1)
 
     # Clean missing values in sq using feature mean
-    df["full_sq"] = df["full_sq"].fillna(df["full_sq"].mean())
-    df["life_sq"] = df["life_sq"].fillna(df["life_sq"].mean())
+    #df["full_sq"] = df["full_sq"].fillna(df["full_sq"].mean())
+    #df["life_sq"] = df["life_sq"].fillna(df["life_sq"].mean()) JK 16/05/2017 cf pred_nan_values
 
     return df
 
 
-def pred_nan_values(df):
+def pred_nan_values(df_, verbose=1):
     """
     @author : JK
     Prédit les NaN d'une colonne en entraînant un model RandomForestRegressor sur les autres colonnes.
-    WARN : make sure that the line x_train = x_train.fillna(0) doesn't change the variable df ! 
-    TO DO : Verify this function
     :param df: (pandas dataframe)
     :return: df with the NaN values predicted.
     """
-
-    ### Get the column having NaNs values.
-    nuls = []
-    for c in df.columns:
-        nuls.append(df[c].isnull().sum())
-
-    pct = [round((n * 100) / len(df), 0) for n in nuls]
-    df_nuls = pd.DataFrame({'col': df.columns, 'nan_count': nuls, '%': pct})
-    df_nuls = df_nuls.sort_values('nan_count', ascending=True)
-
-    col_full = df.columns
-
-    nan_count = df_nuls['nan_count'].tolist()
-    cols = df_nuls['col'].tolist()
+    # columns used for training
+    col_full = ['full_sq', 'floor', 'kitch_sq', 'life_sq', 'num_room', 'max_floor', 'green_zone_km',
+                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
+    # columns used for as target ( nan prediction)
+    col_order = ['num_room', 'kitch_sq', 'max_floor', 'floor', 'life_sq']
 
     print('--- NaN value prediction ---')
-    ### Do the trainings by beginning by the columns having the fewest amount of NaNs.
-    for i in range(len(df_nuls)):
-        if nan_count[i] != 0:
-            print(str(cols[i]) + ', ' + str(i) + '/' + str(len(nuls))+ ', '+ str(nan_count[i]) + ' Nan Values---')
 
-            ### clf initialization
-            clf_tmp = RandomForestRegressor(n_estimators=20, verbose=1, n_jobs=-1)
+    for c in col_order:
+        df = df_[col_full]
 
-            ### Train/test creation
-            col_tmp = list(set(col_full) - set([cols[i]]))
-            list_tmp = df[cols[i]].isnull()
-            df['tmp'] = list_tmp
-            x_train = df[df['tmp'] == False][col_tmp]
-            x_test = df[df['tmp'] == True][col_tmp]
-            y_train = df[df['tmp'] == False][cols[i]]
-            y_test = df[df['tmp'] == True][cols[i]]
+        # Train/test creation
+        col_tmp = list(set(col_full) - set([c]))
+        list_tmp = df[c].isnull()
+        df['tmp'] = list_tmp
+        x_train = df.loc[df['tmp'] == False][col_tmp]
+        x_test = df.loc[df['tmp'] == True][col_tmp]
+        y_train = df.loc[df['tmp'] == False][c]
+        y_test = df.loc[df['tmp'] == True][c]
 
-            df.drop('tmp', axis=1, inplace=True)
+        # NaN values
+        x_train = x_train.fillna(df.median()).values
+        x_test = x_test.fillna(df.median()).values
+        y_train = y_train.values
 
-            ### NaN values
-            x_train = x_train.fillna(0)
-            x_test = x_test.fillna(0)
+        # clf initialization
+        clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
 
-            clf_tmp.fit(x_train, y_train)
-            y_test_ = clf_tmp.predict(x_test)
+        # check tuning
+        y_pred_rfr = cross_val_predict(x_train, y_train, clf,n_fold=3)
+        mean = np.mean(y_train)
+        y_pred_random_mean = np.array([mean for i in range(len(y_pred_rfr))])
 
-            ### Loop for replacing the NaN values by their predicted values
-            k = df[cols[i]].tolist()
-            k_tmp = list_tmp.tolist()
-            compteur = 0
-            for j in range(len(k_tmp)):
-                if k_tmp[j] == True:
-                    k[j] = y_test_[compteur]
-                    compteur = compteur + 1
-                    df[cols[i]] = k
-    return df,nuls
+        if verbose:
+            print('\n' + str(c))
+            result(y_train, y_pred_rfr, y_pred_random_mean)
+
+        # final training
+        clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
+        clf.fit(x_train, y_train)
+        y_test_ = clf.predict(x_test)
+
+        # Loop for replacing the NaN values by their predicted values
+        list_tmp2 = df_[c].isnull()
+        df_['tmp'] = list_tmp2
+
+        df_.ix[df_.tmp == True, c] = y_test_
+        df_.drop('tmp', axis=1, inplace=True)
+        df.drop('tmp', axis=1, inplace=True)
+    return df_
