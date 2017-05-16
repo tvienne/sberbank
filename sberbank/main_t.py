@@ -81,14 +81,17 @@ col_categorical = ['timestamp','material','build_year','state','product_type',
 print("\n----- Machine learning :")
 
 # First dirty model
-features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]
-#features = ["full_sq","life_sq", "ext_sq", "kremlin_km", "num_room","rel_floor","rel_kitch_sq","floor","kitch_sq","max_floor","green_zone_km","kindergarten_km","metro_min_avto","workplaces_km"]
+# features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]
+features = ['full_sq', 'floor', 'kitch_sq', 'life_sq', 'num_room', 'max_floor', 'green_zone_km',
+                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
 #features = full_df.columns
+
+print('is there NaN value : ',full_df[features].isnull().values.any())
 
 label = "price_doc"
 
 # Train-val-test split
-full_df = full_df.fillna(full_df.mean())
+#full_df = full_df.fillna(full_df.mean())
 
 train_val = full_df[full_df["is_test"] == 0]
 test = full_df[full_df["is_test"] == 1]
