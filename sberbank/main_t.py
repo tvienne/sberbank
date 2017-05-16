@@ -4,6 +4,7 @@ Thibaud Kaggle main entry point
 import sys
 import os
 import pandas as pd
+pd.options.mode.chained_assignment = None ## without boring message, I feel better
 import numpy as np
 from sklearn.ensemble import RandomForestRegressor
 import xgboost as xgb
@@ -43,9 +44,11 @@ full_df = yes_no_binarisation(full_df,to_binarize)
 full_df = clean_sq(full_df)
 
 # Other variables
-full_df["num_room"] = full_df["num_room"].fillna(full_df["num_room"].mean())
-full_df["floor"] = full_df["floor"].fillna(full_df["floor"].mean())
+#full_df["num_room"] = full_df["num_room"].fillna(full_df["num_room"].mean())
+#full_df["floor"] = full_df["floor"].fillna(full_df["floor"].mean())
+full_df = pred_nan_values(full_df) # JK 16/05/2017
 full_df["kremlin_km"] = full_df["kremlin_km"].fillna(full_df["kremlin_km"].mean())
+
 
 # HandCrafted
 full_df["ext_sq"] = full_df["full_sq"] - full_df["life_sq"]
@@ -62,15 +65,13 @@ col_categorical = ['timestamp','material','build_year','state','product_type',
                    'detention_facility_raion','ID_metro','ID_railroad_station_walk',
                    'ID_railroad_station_avto','water_1line','ID_big_road1','big_road1_1line',
                    'ID_big_road2','railroad_1line','ID_railroad_terminal','ID_bus_terminal','ecology']
-col_categorical = list(set(col_categorical) - set(to_binarize))
-full_df = get_dummies(col_categorical, full_df, 200)
+#col_categorical = list(set(col_categorical) - set(to_binarize))
+#full_df = get_dummies(col_categorical, full_df, 200)
 
 #######################################
 #   Features Engineering            ###
 #######################################
 
-full_df = full_df.fillna(0)
-#full_df = pred_nan_values(full_df)
 #export_data(full_df, 'full_df')
 
 #######################################
@@ -80,19 +81,22 @@ full_df = full_df.fillna(0)
 print("\n----- Machine learning :")
 
 # First dirty model
-features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]#,"rel_floor","rel_kitch_sq"]
+features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]
+#features = ["full_sq","life_sq", "ext_sq", "kremlin_km", "num_room","rel_floor","rel_kitch_sq","floor","kitch_sq","max_floor","green_zone_km","kindergarten_km","metro_min_avto","workplaces_km"]
 #features = full_df.columns
 
 label = "price_doc"
 
 # Train-val-test split
+full_df = full_df.fillna(full_df.mean())
+
 train_val = full_df[full_df["is_test"] == 0]
 test = full_df[full_df["is_test"] == 1]
 x_train, x_val, y_train, y_val = tt_split(train_val[features], train_val[label],  0.8)
 x_test = test[features]
 
 # RandomForestRegressor
-model_rfr = RandomForestRegressor(200, verbose=1,n_jobs=-1)
+model_rfr = RandomForestRegressor(200, verbose=0,n_jobs=-1)
 model_rfr.fit(x_train, y_train)
 pred_train_rfr = pd.Series(model_rfr.predict(x_train))
 print("Score Train : %s" % rmsle(y_train, pred_train_rfr))
@@ -107,7 +111,7 @@ model_rfr = RandomForestRegressor(200, verbose=0,n_jobs=-1)
     #TO DO : OSError: exception: access violation reading
     # https://github.com/dmlc/xgboost/issues/1163
     #  Fixed the issue by moving the path reference for MinGW-W64 to the front of the PATH system variable.
-    # Cleaned, rebuilt and re-installed xgboost. Problem solved.
+    # Cleaned, rebuilt and re-installed xgboost.
 in_construction = 1
 if not in_construction:
     train_val_xgb = train_val.values
