@@ -6,6 +6,7 @@ import numpy as np
 from sberbank.machine_learning.validation import cross_val_predict
 import matplotlib.pyplot as plt
 import pandas as pd
+from sberbank.machine_learning.validation import result,me,rmse
 
 
 def clean_sq(df):
@@ -31,10 +32,12 @@ def clean_sq(df):
     df["life_sq"] = df.apply(lambda row: apply_life_full_exception(row["life_sq"], row["full_sq"]), axis=1)
 
     # Predict missing life_sq using pred_nan_values function
-    features = ['full_sq', 'floor', 'kitch_sq', 'num_room', 'max_floor', 'green_zone_km',
+    features = ['life_sq','full_sq', 'floor', 'kitch_sq', 'num_room', 'max_floor', 'green_zone_km',
                 'kindergarten_km', 'metro_min_avto', 'workplaces_km']
-    label = "life_sq"
-    df = pred_nan_values(df, features, label, True)
+    label = ['num_room','max_floor','floor','kitch_sq',"life_sq"]
+
+    for l in label:
+        df = pred_nan_values(df, features, l, False)
     return df
 
 
@@ -57,7 +60,6 @@ def apply_life_full_exception(life, full):
         else:
             return life
 
-
 def pred_nan_values(df, features, label, verbose=True):
     """
     @author : JK, TV
@@ -69,7 +71,7 @@ def pred_nan_values(df, features, label, verbose=True):
     :return: df with the NaN values predicted.
     """
     print("--- NaN value prediction on column : %s ---" % label)
-
+    features.remove(label)
     # Train/test creation
     x_train = df[df[label].notnull()][features]
     x_test = df[df[label].isnull()][features]
@@ -84,11 +86,8 @@ def pred_nan_values(df, features, label, verbose=True):
 
     # check tuning
     y_pred_rfr = cross_val_predict(x_train, y_train, clf, n_fold=3)
-    # mean = np.mean(y_train)
-    # y_pred_random_mean = np.array([mean for i in range(len(y_pred_rfr))])
-
+    result(y_train.values, y_pred_rfr)
     if verbose:
-        # result(y_train, y_pred_rfr, y_pred_random_mean)
         plt.scatter(y_train, y_pred_rfr)
         plt.plot(np.linspace(0, 800, 100), np.linspace(0, 800, 100), color="r")
         plt.plot(np.linspace(0, 800, 100),  2.0 * np.linspace(0, 800, 100), color="g")
@@ -103,6 +102,6 @@ def pred_nan_values(df, features, label, verbose=True):
     clf.fit(x_train, y_train)
     y_test = pd.Series(clf.predict(x_test), x_test.index)
     df[label] = df[label].fillna(y_test)
-    print(df[label])
+    #print(df[label])
 
     return df

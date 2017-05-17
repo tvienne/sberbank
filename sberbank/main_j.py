@@ -10,9 +10,9 @@ from sklearn.ensemble import RandomForestRegressor
 from sberbank.import_export.data_import import load_full_dataset, index_by_id
 from sberbank.cleaning.categorical import yes_no_binarisation,otherise_categorical_feature,get_dummies
 from sberbank.cleaning.sq import clean_sq,pred_nan_values
-from sberbank.import_export.data_export import export_kaggle, export_data
+from sberbank.import_export.data_export import export_kaggle, export_data,import_data
 from sberbank.machine_learning.split import tt_split
-from sberbank.machine_learning.validation import rmsle,cross_val_predict
+from sberbank.machine_learning.validation import rmse,cross_val_predict,result,log_y,inv_log_y
 
 
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -28,6 +28,7 @@ full_df = load_full_dataset()
 full_df = index_by_id(full_df)
 print(full_df.shape)
 
+#
 #######################################
 #   Cleaning                        ###
 #######################################
@@ -40,15 +41,15 @@ to_binarize = ["water_1line", "big_market_raion", "big_road1_1line", "culture_ob
 full_df = yes_no_binarisation(full_df,to_binarize)
 
 # Deal with sq :
-full_df = clean_sq(full_df)
-
+#full_df = clean_sq(full_df)
+#export_data(full_df, 'full_df')
+full_df = import_data('full_df2017-05-17_14_12_22.csv')
 
 # Other variables
 #full_df["num_room"] = full_df["num_room"].fillna(full_df["num_room"].mean())
 #full_df["floor"] = full_df["floor"].fillna(full_df["floor"].mean())
 
 full_df["kremlin_km"] = full_df["kremlin_km"].fillna(full_df["kremlin_km"].mean())
-
 
 # HandCrafted
 full_df["ext_sq"] = full_df["full_sq"] - full_df["life_sq"]
@@ -65,6 +66,7 @@ col_categorical = ['timestamp','material','build_year','state','product_type',
                    'detention_facility_raion','ID_metro','ID_railroad_station_walk',
                    'ID_railroad_station_avto','water_1line','ID_big_road1','big_road1_1line',
                    'ID_big_road2','railroad_1line','ID_railroad_terminal','ID_bus_terminal','ecology']
+
 #col_categorical = list(set(col_categorical) - set(to_binarize))
 #full_df = get_dummies(col_categorical, full_df, 200)
 
@@ -83,8 +85,8 @@ print("\n----- Machine learning :")
 # First dirty model
 # features = ["life_sq", "ext_sq", "kremlin_km", "num_room"]
 features = ['full_sq', 'floor', 'kitch_sq', 'life_sq', 'num_room', 'max_floor', 'green_zone_km',
-                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
-full_df[features] = full_df[features].fillna(full_df[features].median())
+                'kindergarten_km', 'metro_min_avto', 'workplaces_km']#,'ext_sq','rel_floor','rel_kitch_sq']
+#full_df[features] = full_df[features].fillna(full_df[features].median())
 #features = full_df.columns
 
 print('is there NaN value : ',full_df[features].isnull().values.any())
@@ -94,20 +96,25 @@ label = "price_doc"
 # Train-val-test split
 #full_df = full_df.fillna(full_df.mean())
 
+
 train_val = full_df[full_df["is_test"] == 0]
 test = full_df[full_df["is_test"] == 1]
+train_val[label] = log_y(train_val[label])
 x_train, x_val, y_train, y_val = tt_split(train_val[features], train_val[label],  0.8)
 x_test = test[features]
+
 
 # RandomForestRegressor
 model_rfr = RandomForestRegressor(200, verbose=0,n_jobs=-1)
 model_rfr.fit(x_train, y_train)
 pred_train_rfr = pd.Series(model_rfr.predict(x_train))
-print("Score Train : %s" % rmsle(y_train, pred_train_rfr))
+print("Score Train : %s" % rmse(y_train, pred_train_rfr))
+
 
 model_rfr = RandomForestRegressor(200, verbose=0,n_jobs=-1)
 pred_val_rfr = pd.Series(cross_val_predict(train_val[features], train_val[label], model_rfr, n_fold=5))
-print("Score Val : %s" % rmsle(train_val[label], pred_val_rfr))
+#print("Score Val : %s" % rmsle(train_val[label], pred_val_rfr))
+result(train_val[label],pred_val_rfr)
 
 model_rfr = RandomForestRegressor(200, verbose=0,n_jobs=-1)
 
@@ -158,6 +165,6 @@ model_rfr.fit(train_val[features], train_val[label])
 pred_test_rfr = pd.Series(model_rfr.predict(x_test))
 
 pred_test_rfr.index = x_test.index
-test["price_doc"] = pred_test_rfr
+test["price_doc"] = inv_log_y(pred_test_rfr)
 
 export_kaggle(test)

@@ -2,7 +2,7 @@
 Deals with data exportation
 """
 from time import gmtime, strftime
-
+import pandas as pd
 
 def export_kaggle(df, dir_path="../result/"):
     """
@@ -20,7 +20,7 @@ def export_kaggle(df, dir_path="../result/"):
 
     # export
     now = strftime("%Y-%m-%d_%H_%M_%S", gmtime())
-    df[["price_doc"]].to_csv(dir_path+"%s.csv" % now, sep=",", index=True)
+    df[["price_doc"]].to_csv(dir_path+"%s.csv" % now, sep=",", index=True,index_label='id')
 
 def export_data(df, name,dir_path="../saved_data/"):
     """
@@ -35,5 +35,15 @@ def export_data(df, name,dir_path="../saved_data/"):
     # export
     now = strftime("%Y-%m-%d_%H_%M_%S", gmtime())
     path = dir_path+name+"%s.csv" % now
-    df.to_csv(path, sep=",", index=False)
+    df.to_csv(path, sep=",")
     print(name + " exported into " + path)
+
+def import_data(name):
+    dir_path = "../saved_data/" + name
+
+    # keep the true index
+    df_new = pd.read_csv(dir_path)
+    df_new = df_new.set_index(df_new['id'].values)
+    #df_new = df_new.drop(['Unnamed: 0'], axis=1)
+    return df_new
+
