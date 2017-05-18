@@ -44,6 +44,5 @@ def import_data(name):
     # keep the true index
     df_new = pd.read_csv(dir_path)
     df_new = df_new.set_index(df_new['id'].values)
-    #df_new = df_new.drop(['Unnamed: 0'], axis=1)
     return df_new
 

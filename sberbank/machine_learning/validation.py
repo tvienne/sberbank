@@ -30,7 +30,11 @@ def rmse(y_true, y_pred):
     :param pred: (pandas serie) prediction
     :return: RMSE
     """
-    square_serie = (y_pred - y_true).multiply((y_pred - y_true))
+
+    y_true_copy = y_true.reset_index(drop=True).copy()
+    y_pred_copy = y_pred.reset_index(drop=True).copy()
+
+    square_serie = (y_pred_copy - y_true_copy).multiply((y_pred_copy - y_true_copy))
     result = math.sqrt(square_serie.mean())
     return result
 
@@ -42,7 +46,10 @@ def me(y_true, y_pred):
     :param pred: (pandas serie) prediction
     :return: ME
     """
-    abs_serie = np.abs(y_pred - y_true)
+    y_true_copy = y_true.reset_index(drop=True).copy()
+    y_pred_copy = y_pred.reset_index(drop=True).copy()
+
+    abs_serie = np.abs(y_pred_copy - y_true_copy)
     result = abs_serie.mean()
     return result
 
@@ -101,18 +108,20 @@ def result(y, y_pred):
 
 def log_y(y_init):
     """
+    @author : JK
     :param y_init: (pandas serie) the target
     :return: np.log(y+1) for using rmse
     """
-    log_y1 = y_init.apply(lambda el: math.log1p(float(el)+1))
+    log_y1 = y_init.apply(lambda el: math.log1p(float(el)))
     return log_y1
 
 
 def inv_log_y(y_final):
     """
+    @author : JK
     :param y_final: (pandas serie) the predicted target
     :return: np.exp(y_final)-1 for getting the real prediction
     """
-    exp_y1 = y_final.apply(lambda el: math.exp(float(el))-2)
+    exp_y1 = y_final.apply(lambda el: math.exp(float(el))-1)
     return exp_y1
 
