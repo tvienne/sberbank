@@ -1,12 +1,8 @@
 """
 Deals with sq features cleaning
 """
-from sklearn.ensemble import RandomForestRegressor
 import numpy as np
-from sberbank.machine_learning.validation import cross_val_predict
-import matplotlib.pyplot as plt
-import pandas as pd
-from sberbank.machine_learning.validation import result,me,rmse
+from sberbank.cleaning.clean_toolbox import pred_nan_values
 
 
 def clean_sq(df):
@@ -32,12 +28,10 @@ def clean_sq(df):
     df["life_sq"] = df.apply(lambda row: apply_life_full_exception(row["life_sq"], row["full_sq"]), axis=1)
 
     # Predict missing life_sq using pred_nan_values function
-    features = ['life_sq','full_sq', 'floor', 'kitch_sq', 'num_room', 'max_floor', 'green_zone_km',
-                'kindergarten_km', 'metro_min_avto', 'workplaces_km']
-    label = ['num_room','max_floor','floor','kitch_sq',"life_sq"]
+    features = ['full_sq', 'floor', 'kitch_sq', 'num_room']
+    label = "life_sq"
+    df = pred_nan_values(df, features, label, False)
 
-    for l in label:
-        df = pred_nan_values(df, features, l, False)
     return df
 
 
@@ -59,49 +53,3 @@ def apply_life_full_exception(life, full):
             return full
         else:
             return life
-
-def pred_nan_values(df, features, label, verbose=True):
-    """
-    @author : JK, TV
-    Prédit les NaN d'une colonne en entraînant un model RandomForestRegressor sur les colonnes features.
-    :param df: (pandas dataframe)
-    :param features: (list) containing features names
-    :param label: (str) label column name
-    :param verbose: (bool) whether or not display graphics.
-    :return: df with the NaN values predicted.
-    """
-    print("--- NaN value prediction on column : %s ---" % label)
-    features.remove(label)
-    # Train/test creation
-    x_train = df[df[label].notnull()][features]
-    x_test = df[df[label].isnull()][features]
-    y_train = df[df[label].notnull()][label]
-
-    # NaN values
-    x_train = x_train.fillna(df.median())
-    x_test = x_test.fillna(df.median())
-
-    # clf initialization
-    clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
-
-    # check tuning
-    y_pred_rfr = cross_val_predict(x_train, y_train, clf, n_fold=3)
-    result(y_train.values, y_pred_rfr)
-    if verbose:
-        plt.scatter(y_train, y_pred_rfr)
-        plt.plot(np.linspace(0, 800, 100), np.linspace(0, 800, 100), color="r")
-        plt.plot(np.linspace(0, 800, 100),  2.0 * np.linspace(0, 800, 100), color="g")
-        plt.plot(np.linspace(0, 800, 100), 0.5 * np.linspace(0, 800, 100), color="g")
-        plt.xlabel("%s" % label)
-        plt.ylabel("prediction")
-        plt.title("Prediction on %s evaluation : (green scale = x2.0)" % label)
-        plt.show()
-
-    # final training and fill na
-    clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
-    clf.fit(x_train, y_train)
-    y_test = pd.Series(clf.predict(x_test), x_test.index)
-    df[label] = df[label].fillna(y_test)
-    #print(df[label])
-
-    return df
