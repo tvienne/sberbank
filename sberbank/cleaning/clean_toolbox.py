@@ -31,8 +31,8 @@ def pred_nan_values(df, features, label, check_tuning=False):
 
     if check_tuning:
         # check tuning
-        clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
-        y_pred_rfr = cross_val_predict(x_train, y_train, clf, n_fold=3)
+        clf = RandomForestRegressor(n_estimators=150, verbose=0, n_jobs=-1)
+        y_pred_rfr = cross_val_predict(clf, x_train, y_train, n_fold=3)
         result(y_train.values, y_pred_rfr)
 
         # Plot result
@@ -46,7 +46,7 @@ def pred_nan_values(df, features, label, check_tuning=False):
         plt.show()
 
     # final training and fill na
-    clf = RandomForestRegressor(n_estimators=50, verbose=0, n_jobs=-1)
+    clf = RandomForestRegressor(n_estimators=150, verbose=0, n_jobs=-1)
     clf.fit(x_train, y_train)
     y_test = pd.Series(clf.predict(x_test), x_test.index)
     df[label] = df[label].fillna(y_test)
